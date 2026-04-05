@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Text3D, Center, Grid, Environment, ContactShadows, Float } from '@react-three/drei';
 import * as THREE from 'three';
 import { STLExporter, TTFLoader, FontLoader } from 'three-stdlib';
-import { Download, ChevronDown, Check } from 'lucide-react';
+import { Download, ChevronDown, Check, Maximize } from 'lucide-react';
 import { suspend } from 'suspend-react';
 
 // Custom hook to correctly load and parse TTF fonts
@@ -303,6 +303,7 @@ const TTFText3D = ({ fontUrl, text, color, size, depth, ...props }: any) => {
 export default function App() {
   const [layer1, setLayer1] = useState<LayerConfig>(defaultLayer1);
   const [layer2, setLayer2] = useState<LayerConfig>(defaultLayer2);
+  const [showMobilePrompt, setShowMobilePrompt] = useState(false);
   const groupRef = useRef<THREE.Group>(null);
 
   useEffect(() => {
@@ -310,7 +311,24 @@ export default function App() {
     link.href = 'https://fonts.googleapis.com/css2?family=Anton&family=Audiowide&family=Bangers&family=Bebas+Neue&family=Creepster&family=Fascinate&family=Lobster&family=Monoton&family=Pacifico&family=Press+Start+2P&family=Righteous&family=Russo+One&family=Sigmar+One&family=Titan+One&family=VT323&display=swap';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
+
+    // Check if mobile on load
+    if (window.innerWidth < 768) {
+      setShowMobilePrompt(true);
+    }
   }, []);
+
+  const enterFullscreen = () => {
+    const elem = document.documentElement as any;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch((err: any) => console.log(err));
+    } else if (elem.webkitRequestFullscreen) { /* Safari */
+      elem.webkitRequestFullscreen();
+    } else if (elem.msRequestFullscreen) { /* IE11 */
+      elem.msRequestFullscreen();
+    }
+    setShowMobilePrompt(false);
+  };
 
   const exportSTL = () => {
     if (groupRef.current) {
@@ -331,6 +349,35 @@ export default function App() {
 
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] bg-[#f8fafc] font-sans overflow-hidden relative selection:bg-blue-200">
+      {/* Mobile Fullscreen Prompt */}
+      {showMobilePrompt && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4 border border-white/20">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 shadow-inner">
+              <Maximize className="w-8 h-8 text-blue-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-800">Optimales Erlebnis</h2>
+            <p className="text-gray-600 text-sm leading-relaxed">
+              Um den VRifle 3D Text Generator auf dem Smartphone optimal zu genießen, empfehlen wir den Vollbildmodus.
+            </p>
+            <div className="pt-4 flex flex-col gap-3">
+              <button 
+                onClick={enterFullscreen}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95"
+              >
+                Im Vollbild öffnen
+              </button>
+              <button 
+                onClick={() => setShowMobilePrompt(false)}
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium py-3 px-4 rounded-xl transition-colors"
+              >
+                Nein danke, so lassen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Decorative Background Blobs for Glassmorphism */}
       <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-200/40 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-5%] w-[40vw] h-[40vw] rounded-full bg-purple-200/40 blur-[120px] pointer-events-none" />
