@@ -1,0 +1,5 @@
+{
+  "name": "VRifle 3D Text Generator",
+  "description": "Erstelle 3D-Schriftmodelle mit zwei Ebenen und exportiere sie als STL-Datei für den 3D-Druck.",
+  "requestFramePermissions": []
+}
