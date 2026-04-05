@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Text3D, Center, Grid, Environment, ContactShadows, Float } from '@react-three/drei';
 import * as THREE from 'three';
 import { STLExporter, TTFLoader, FontLoader } from 'three-stdlib';
-import { Download, ChevronDown, Check, Maximize } from 'lucide-react';
+import { Download, ChevronDown, Check, Maximize, AlertTriangle, X } from 'lucide-react';
 import { suspend } from 'suspend-react';
 
 // Custom hook to correctly load and parse TTF fonts
@@ -53,7 +53,7 @@ const defaultLayer1: LayerConfig = {
   fontUrl: FONTS[0].url,
   size: 3,
   depth: 0.5,
-  letterSpacing: 0,
+  letterSpacing: -0.15,
   xOffset: 0,
   yOffset: 0,
   zOffset: 0,
@@ -304,6 +304,7 @@ export default function App() {
   const [layer1, setLayer1] = useState<LayerConfig>(defaultLayer1);
   const [layer2, setLayer2] = useState<LayerConfig>(defaultLayer2);
   const [showMobilePrompt, setShowMobilePrompt] = useState(false);
+  const [isWarningMinimized, setIsWarningMinimized] = useState(false);
   const groupRef = useRef<THREE.Group>(null);
 
   useEffect(() => {
@@ -405,13 +406,64 @@ export default function App() {
              <LayerControls title="Ebene 1 (Basis)" layer={layer1} setLayer={setLayer1} />
            </div>
            <div className="relative z-10">
-             <LayerControls title="Ebene 2 (Top)" layer={layer2} setLayer={setLayer2} />
+             {layer1.letterSpacing > -0.05 && (
+               <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl shadow-sm relative overflow-hidden">
+                 <div className="absolute top-0 left-0 w-1 h-full bg-amber-400" />
+                 <div className="flex items-start gap-3">
+                   <div className="text-amber-500 mt-0.5">
+                     <AlertTriangle className="w-5 h-5" />
+                   </div>
+                   <div>
+                     <h4 className="text-sm font-bold text-amber-800">Buchstaben berühren sich nicht!</h4>
+                     <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                       Für einen stabilen 3D-Druck müssen die Buchstaben der Basis-Ebene verbunden sein. Bitte verringere den Buchstabenabstand (Ebene 1) auf maximal -0.05, um Ebene 2 freizuschalten.
+                     </p>
+                   </div>
+                 </div>
+               </div>
+             )}
+             <div className={layer1.letterSpacing > -0.05 ? "opacity-40 pointer-events-none transition-opacity duration-300 select-none grayscale-[0.5]" : "transition-opacity duration-300"}>
+               <LayerControls title="Ebene 2 (Top)" layer={layer2} setLayer={setLayer2} />
+             </div>
            </div>
         </div>
       </div>
 
       {/* 3D Canvas */}
       <div className="w-full h-[45vh] md:h-full md:flex-1 relative z-0 order-1 md:order-2">
+         {/* Liquid Glass Warning */}
+         <div className={`absolute top-4 z-10 transition-all duration-300 ease-in-out flex justify-center pointer-events-none ${isWarningMinimized ? 'left-4 md:left-auto md:right-6 md:top-6' : 'left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-max md:max-w-lg'}`}>
+           <div 
+             className={`bg-amber-300/20 backdrop-blur-md border border-amber-300/40 shadow-[0_8px_32px_rgba(251,191,36,0.2)] transition-all duration-300 overflow-hidden relative ${
+               isWarningMinimized 
+                 ? 'w-12 h-12 rounded-full cursor-pointer pointer-events-auto hover:bg-amber-300/40 flex items-center justify-center' 
+                 : 'w-full rounded-2xl p-3 md:p-4 flex items-start gap-3'
+             }`}
+             onClick={() => isWarningMinimized && setIsWarningMinimized(false)}
+             title={isWarningMinimized ? "Warnhinweis anzeigen" : ""}
+           >
+             {isWarningMinimized ? (
+               <AlertTriangle className="w-6 h-6 text-amber-600 drop-shadow-sm" />
+             ) : (
+               <>
+                 <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 drop-shadow-sm" />
+                 <div className="pr-6">
+                   <p className="text-xs md:text-sm text-amber-900 font-medium leading-relaxed drop-shadow-sm">
+                     <strong className="font-bold text-amber-950">Wichtig für den 3D-Druck:</strong> Die Buchstaben der Ebene 1 (Basis) müssen sich zwingend berühren, um ein qualitativ gutes und stabiles Ergebnis zu erhalten.
+                   </p>
+                 </div>
+                 <button 
+                   onClick={(e) => { e.stopPropagation(); setIsWarningMinimized(true); }}
+                   className="absolute top-2 right-2 p-1.5 rounded-full hover:bg-amber-400/40 text-amber-700 transition-colors pointer-events-auto"
+                   title="Minimieren"
+                 >
+                   <X className="w-4 h-4" />
+                 </button>
+               </>
+             )}
+           </div>
+         </div>
+
          <Canvas shadows camera={{ position: [0, 2, 15], fov: 45 }}>
             <ambientLight intensity={0.6} />
             <directionalLight position={[10, 10, 10]} intensity={1} castShadow shadow-mapSize={[1024, 1024]} />
