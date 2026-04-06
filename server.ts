@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const RECIPIENT_EMAIL = process.env.RECIPIENT_EMAIL || 'vrifleveo3@gmail.com';
+const RECIPIENT_EMAIL = process.env.RECIPIENT_EMAIL || 'sk.vrifle@gmail.com';
 
 async function startServer() {
   const app = express();

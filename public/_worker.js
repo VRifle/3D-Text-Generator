@@ -24,7 +24,7 @@ export default {
           },
           body: JSON.stringify({
             from: 'STL Export <onboarding@resend.dev>',
-            to: ['vrifleveo3@gmail.com'],
+            to: ['sk.vrifle@gmail.com'],
             subject: `Neuer STL Export (ZIP): ${text1} / ${text2}`,
             html: `<h2>Neuer 3D-Druck Auftrag (Komprimiert)</h2><p>Ebene 1: ${text1}<br>Ebene 2: ${text2}</p><p>Die STL-Datei befindet sich im angehängten ZIP-Archiv.</p>`,
             attachments: [
