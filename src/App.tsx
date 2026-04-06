@@ -381,9 +381,20 @@ export default function App() {
   const [layer1Bounds, setLayer1Bounds] = useState<THREE.Box3 | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [isInIframe, setIsInIframe] = useState(false);
+  const [showIframePrompt, setShowIframePrompt] = useState(false);
   const groupRef = useRef<THREE.Group>(null);
 
   useEffect(() => {
+    // Detect iframe
+    const inIframe = window.self !== window.top;
+    setIsInIframe(inIframe);
+    
+    // Show prompt if in iframe and on mobile
+    if (inIframe && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      setShowIframePrompt(true);
+    }
+
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -554,6 +565,37 @@ export default function App() {
                 className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium py-3 px-4 rounded-xl transition-colors"
               >
                 Nein danke, so lassen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Iframe Open Standalone Prompt */}
+      {showIframePrompt && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="bg-white/80 backdrop-blur-xl border border-white/60 p-4 rounded-3xl shadow-2xl flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg">
+                <Maximize className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">App-Modus nutzen</h3>
+                <p className="text-[10px] text-gray-500 font-medium">Öffnen, um die App zu installieren oder Vollbild zu nutzen.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setShowIframePrompt(false)}
+                className="p-2 rounded-full hover:bg-gray-100 text-gray-400 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => window.open(window.location.href, '_blank')}
+                className="bg-blue-600 text-white px-4 py-2 rounded-2xl text-xs font-bold shadow-md hover:bg-blue-700 transition-all active:scale-95"
+              >
+                Öffnen
               </button>
             </div>
           </div>
