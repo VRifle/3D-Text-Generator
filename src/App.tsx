@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Text3D, Center, Grid, Environment, ContactShadows, Float } from '@react-three/drei';
 import * as THREE from 'three';
 import { STLExporter, TTFLoader, FontLoader } from 'three-stdlib';
-import { Download, ChevronDown, Check, Maximize, AlertTriangle, X } from 'lucide-react';
+import { Download, ChevronDown, Check, Maximize, AlertTriangle, X, Link as LinkIcon } from 'lucide-react';
 import { suspend } from 'suspend-react';
 
 // Custom hook to correctly load and parse TTF fonts
@@ -201,18 +201,19 @@ const LayerControls = ({ title, layer, setLayer }: { title: string, layer: Layer
       </div>
 
       <div className="space-y-3 relative z-10">
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">Position (X, Y, Z)</label>
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">Positionierung</label>
         
         <div className="flex items-center gap-3 bg-white/40 p-2.5 rounded-2xl border border-white/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
-          <span className="text-xs font-bold text-red-400 w-4 text-center">X</span>
+          <span className="text-[9px] font-bold text-red-400 w-20 uppercase">Links-Rechts</span>
           <input 
-            type="range" min="-20" max="20" step="0.1" 
+            type="range" min="-20" max="20" step="0.01" 
             value={layer.xOffset} 
             onChange={e => handleChange('xOffset', parseFloat(e.target.value))}
             className="flex-1 accent-red-400"
           />
           <input 
             type="number" 
+            step="0.01"
             value={layer.xOffset}
             onChange={e => handleChange('xOffset', parseFloat(e.target.value) || 0)}
             className="w-16 text-xs px-2 py-1.5 border border-white/60 rounded-xl text-right font-mono bg-white/50 shadow-sm outline-none focus:ring-2 focus:ring-red-400/40"
@@ -220,15 +221,16 @@ const LayerControls = ({ title, layer, setLayer }: { title: string, layer: Layer
         </div>
 
         <div className="flex items-center gap-3 bg-white/40 p-2.5 rounded-2xl border border-white/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
-          <span className="text-xs font-bold text-green-500 w-4 text-center">Y</span>
+          <span className="text-[9px] font-bold text-green-500 w-20 uppercase">Hoch-Runter</span>
           <input 
-            type="range" min="-20" max="20" step="0.1" 
+            type="range" min="-20" max="20" step="0.01" 
             value={layer.yOffset} 
             onChange={e => handleChange('yOffset', parseFloat(e.target.value))}
             className="flex-1 accent-green-500"
           />
           <input 
             type="number" 
+            step="0.01"
             value={layer.yOffset}
             onChange={e => handleChange('yOffset', parseFloat(e.target.value) || 0)}
             className="w-16 text-xs px-2 py-1.5 border border-white/60 rounded-xl text-right font-mono bg-white/50 shadow-sm outline-none focus:ring-2 focus:ring-green-500/40"
@@ -236,15 +238,16 @@ const LayerControls = ({ title, layer, setLayer }: { title: string, layer: Layer
         </div>
 
         <div className="flex items-center gap-3 bg-white/40 p-2.5 rounded-2xl border border-white/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
-          <span className="text-xs font-bold text-blue-500 w-4 text-center">Z</span>
+          <span className="text-[9px] font-bold text-blue-500 w-20 uppercase">Vor-Zurück</span>
           <input 
-            type="range" min="-20" max="20" step="0.1" 
+            type="range" min="-20" max="20" step="0.01" 
             value={layer.zOffset} 
             onChange={e => handleChange('zOffset', parseFloat(e.target.value))}
             className="flex-1 accent-blue-500"
           />
           <input 
             type="number" 
+            step="0.01"
             value={layer.zOffset}
             onChange={e => handleChange('zOffset', parseFloat(e.target.value) || 0)}
             className="w-16 text-xs px-2 py-1.5 border border-white/60 rounded-xl text-right font-mono bg-white/50 shadow-sm outline-none focus:ring-2 focus:ring-blue-500/40"
@@ -300,12 +303,57 @@ const TTFText3D = ({ fontUrl, text, color, size, depth, ...props }: any) => {
   );
 };
 
+const Eyelet = ({ position, color, depth, size = 1 }: { position: [number, number, number], color: string, depth: number, size?: number }) => {
+  return (
+    <group position={position} scale={[size, size, size]}>
+      {/* The thick ring (O-shape) - oriented for front view */}
+      <mesh castShadow receiveShadow>
+        <torusGeometry args={[0.4, 0.18, 16, 48]} />
+        <meshPhysicalMaterial 
+          color={color} 
+          roughness={0.2} 
+          metalness={0.1} 
+          clearcoat={0.8}
+          clearcoatRoughness={0.2}
+        />
+      </mesh>
+      {/* Horizontal connection bridge to the right */}
+      <mesh position={[0.4, 0, 0]} castShadow receiveShadow>
+        <boxGeometry args={[0.5, 0.4, depth / size]} />
+        <meshPhysicalMaterial 
+          color={color} 
+          roughness={0.2} 
+          metalness={0.1} 
+          clearcoat={0.8}
+          clearcoatRoughness={0.2}
+        />
+      </mesh>
+    </group>
+  );
+};
+
 export default function App() {
   const [layer1, setLayer1] = useState<LayerConfig>(defaultLayer1);
   const [layer2, setLayer2] = useState<LayerConfig>(defaultLayer2);
   const [showMobilePrompt, setShowMobilePrompt] = useState(false);
   const [isWarningMinimized, setIsWarningMinimized] = useState(false);
+  const [isKeychainEnabled, setIsKeychainEnabled] = useState(false);
+  const [keychainPos, setKeychainPos] = useState<[number, number, number] | null>(null);
+  const [keychainSize, setKeychainSize] = useState(1);
+  const [isPlacingKeychain, setIsPlacingKeychain] = useState(false);
+  const [layer1Bounds, setLayer1Bounds] = useState<THREE.Box3 | null>(null);
   const groupRef = useRef<THREE.Group>(null);
+
+  // Default position calculation if none set
+  useEffect(() => {
+    if (isKeychainEnabled && !keychainPos && layer1Bounds) {
+      setKeychainPos([
+        layer1Bounds.min.x + layer1.xOffset - 0.6, 
+        (layer1Bounds.min.y + layer1Bounds.max.y) / 2 + layer1.yOffset, 
+        layer1.zOffset + layer1.depth / 2
+      ]);
+    }
+  }, [isKeychainEnabled, layer1Bounds, layer1.xOffset, layer1.yOffset, layer1.zOffset, layer1.depth, keychainPos]);
 
   useEffect(() => {
     const link = document.createElement('link');
@@ -402,6 +450,99 @@ export default function App() {
         </div>
         
         <div className="p-4 md:p-6 space-y-6 md:space-y-8 flex flex-col">
+            {/* Keychain Controls */}
+            <div className="bg-white/50 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-4 space-y-4 relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-50/40 to-transparent pointer-events-none" />
+              
+              <div className="flex items-center justify-between relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-xl transition-colors ${isKeychainEnabled ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                    <LinkIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-800">Schlüsselanhänger</h4>
+                    <p className="text-[10px] text-gray-500 font-medium tracking-tight uppercase">Öse hinzufügen</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsKeychainEnabled(!isKeychainEnabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none z-10 ${isKeychainEnabled ? 'bg-blue-500' : 'bg-gray-200'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isKeychainEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+
+              {isKeychainEnabled && (
+                <div className="space-y-4 pt-2 border-t border-white/40 relative z-10">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Positionierung</label>
+                      <button 
+                        onClick={() => setIsPlacingKeychain(!isPlacingKeychain)}
+                        className={`w-full py-2.5 px-4 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-2 ${
+                          isPlacingKeychain 
+                          ? 'bg-amber-500 text-white shadow-lg shadow-amber-200 animate-pulse' 
+                          : 'bg-white/60 text-gray-700 border border-white/80 hover:bg-white/80'
+                        }`}
+                      >
+                        {isPlacingKeychain ? 'Klick...' : 'Per Klick'}
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Größe</label>
+                      <div className="flex items-center gap-2 bg-white/40 p-1.5 rounded-xl border border-white/60">
+                        <input 
+                          type="range" min="0.5" max="3" step="0.1" 
+                          value={keychainSize} 
+                          onChange={e => setKeychainSize(parseFloat(e.target.value))}
+                          className="flex-1 accent-blue-500 h-1.5"
+                        />
+                        <span className="text-[9px] font-mono text-gray-500 w-6 text-right">{keychainSize.toFixed(1)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Manuelle Positionierung</label>
+                    
+                    <div className="flex items-center gap-3 bg-white/40 px-2 py-1.5 rounded-xl border border-white/60">
+                      <span className="text-[8px] font-bold text-red-400 w-16 uppercase">Links-Rechts</span>
+                      <input 
+                        type="range" min="-20" max="20" step="0.01" 
+                        value={keychainPos?.[0] || 0} 
+                        onChange={e => setKeychainPos([parseFloat(e.target.value), keychainPos?.[1] || 0, keychainPos?.[2] || 0])}
+                        className="flex-1 accent-red-400 h-1.5"
+                      />
+                      <span className="text-[9px] font-mono text-gray-500 w-10 text-right">{(keychainPos?.[0] || 0).toFixed(2)}</span>
+                    </div>
+
+                    <div className="flex items-center gap-3 bg-white/40 px-2 py-1.5 rounded-xl border border-white/60">
+                      <span className="text-[8px] font-bold text-green-500 w-16 uppercase">Hoch-Runter</span>
+                      <input 
+                        type="range" min="-20" max="20" step="0.01" 
+                        value={keychainPos?.[1] || 0} 
+                        onChange={e => setKeychainPos([keychainPos?.[0] || 0, parseFloat(e.target.value), keychainPos?.[2] || 0])}
+                        className="flex-1 accent-green-500 h-1.5"
+                      />
+                      <span className="text-[9px] font-mono text-gray-500 w-10 text-right">{(keychainPos?.[1] || 0).toFixed(2)}</span>
+                    </div>
+
+                    <div className="flex items-center gap-3 bg-white/40 px-2 py-1.5 rounded-xl border border-white/60">
+                      <span className="text-[8px] font-bold text-blue-500 w-16 uppercase">Vor-Zurück</span>
+                      <input 
+                        type="range" min="-20" max="20" step="0.01" 
+                        value={keychainPos?.[2] || 0} 
+                        onChange={e => setKeychainPos([keychainPos?.[0] || 0, keychainPos?.[1] || 0, parseFloat(e.target.value)])}
+                        className="flex-1 accent-blue-500 h-1.5"
+                      />
+                      <span className="text-[9px] font-mono text-gray-500 w-10 text-right">{(keychainPos?.[2] || 0).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
            <div className="relative z-20">
              <LayerControls title="Ebene 1 (Basis)" layer={layer1} setLayer={setLayer1} />
            </div>
@@ -464,26 +605,54 @@ export default function App() {
            </div>
          </div>
 
-         <Canvas shadows camera={{ position: [0, 2, 15], fov: 45 }}>
+         <Canvas 
+            shadows 
+            camera={{ position: [0, 2, 15], fov: 45 }}
+          >
             <ambientLight intensity={0.6} />
             <directionalLight position={[10, 10, 10]} intensity={1} castShadow shadow-mapSize={[1024, 1024]} />
             <directionalLight position={[-10, -10, -10]} intensity={0.3} />
             
             <Suspense fallback={<mesh><boxGeometry args={[1, 1, 1]} /><meshStandardMaterial color="red" /></mesh>}>
               <Float speed={1.5} rotationIntensity={0.1} floatIntensity={0.5}>
-                <group ref={groupRef}>
+                <group 
+                  ref={groupRef}
+                  onPointerDown={(e) => {
+                    if (isPlacingKeychain) {
+                      e.stopPropagation();
+                      const point = e.point;
+                      setKeychainPos([point.x, point.y, point.z]);
+                      setIsPlacingKeychain(false);
+                    }
+                  }}
+                >
                    {/* Layer 1 */}
                    {layer1.text.trim() && (
-                     <Center disableZ position={[layer1.xOffset, layer1.yOffset, layer1.zOffset]}>
-                       <TTFText3D 
-                         fontUrl={layer1.fontUrl} 
-                         text={layer1.text}
-                         size={layer1.size} 
-                         depth={layer1.depth}
-                         letterSpacing={layer1.letterSpacing}
-                         color={layer1.color}
-                       />
-                     </Center>
+                     <group>
+                       <Center 
+                         key={layer1.text + layer1.fontUrl + layer1.size + layer1.letterSpacing}
+                         disableZ 
+                         position={[layer1.xOffset, layer1.yOffset, layer1.zOffset]}
+                         onCentered={({ boundingBox }) => setLayer1Bounds(boundingBox)}
+                       >
+                         <TTFText3D 
+                           fontUrl={layer1.fontUrl} 
+                           text={layer1.text}
+                           size={layer1.size} 
+                           depth={layer1.depth}
+                           letterSpacing={layer1.letterSpacing}
+                           color={layer1.color}
+                         />
+                       </Center>
+                       {isKeychainEnabled && keychainPos && (
+                         <Eyelet 
+                           position={keychainPos} 
+                           color={layer1.color} 
+                           depth={layer1.depth} 
+                           size={keychainSize}
+                         />
+                       )}
+                     </group>
                    )}
                    
                    {/* Layer 2 */}
