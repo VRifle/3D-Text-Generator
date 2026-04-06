@@ -4,7 +4,7 @@ import { OrbitControls, Text3D, Center, Grid, Environment, ContactShadows, Float
 import * as THREE from 'three';
 import { STLExporter, TTFLoader, FontLoader } from 'three-stdlib';
 import JSZip from 'jszip';
-import { Download, ChevronDown, Check, Maximize, AlertTriangle, X, Link as LinkIcon, Mail, Loader2, CheckCircle2 } from 'lucide-react';
+import { Download, ChevronDown, Check, Maximize, AlertTriangle, X, Link as LinkIcon, Mail, Loader2, CheckCircle2, Smartphone } from 'lucide-react';
 import { suspend } from 'suspend-react';
 
 // Custom hook to correctly load and parse TTF fonts
@@ -379,7 +379,29 @@ export default function App() {
   const [keychainSize, setKeychainSize] = useState(1);
   const [isPlacingKeychain, setIsPlacingKeychain] = useState(false);
   const [layer1Bounds, setLayer1Bounds] = useState<THREE.Box3 | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const groupRef = useRef<THREE.Group>(null);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallPrompt(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      setShowInstallPrompt(false);
+    }
+  };
 
   // Default position calculation if none set
   useEffect(() => {
@@ -532,6 +554,37 @@ export default function App() {
                 className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium py-3 px-4 rounded-xl transition-colors"
               >
                 Nein danke, so lassen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PWA Install Prompt */}
+      {showInstallPrompt && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="bg-white/80 backdrop-blur-xl border border-white/60 p-4 rounded-3xl shadow-2xl flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gray-900 flex items-center justify-center text-white shadow-lg">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">App installieren</h3>
+                <p className="text-[10px] text-gray-500 font-medium">Für schnellen Zugriff zum Home-Bildschirm hinzufügen.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setShowInstallPrompt(false)}
+                className="p-2 rounded-full hover:bg-gray-100 text-gray-400 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={handleInstallClick}
+                className="bg-gray-900 text-white px-4 py-2 rounded-2xl text-xs font-bold shadow-md hover:bg-black transition-all active:scale-95"
+              >
+                Installieren
               </button>
             </div>
           </div>
