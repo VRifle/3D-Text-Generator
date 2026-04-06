@@ -505,6 +505,22 @@ export default function App() {
 
         if (response.ok) {
           setSendSuccess(true);
+          
+          // Redirect to shop page after a short delay
+          const modelType = getModelTypeName();
+          const shopUrls: Record<string, string> = {
+            'Schriftzug': 'https://www.vrifle-3d.de/product/22682877/3d-schriftzuege',
+            'Tuerschild': 'https://www.vrifle-3d.de/product/22682773/tuerschilder',
+            'Anhaenger': 'https://www.vrifle-3d.de/product/22682924/schluesselanhaenger'
+          };
+          
+          const targetUrl = shopUrls[modelType] || 'https://www.vrifle-3d.de';
+          
+          // Open shop page in a new tab after a short delay to avoid iframe restrictions
+          setTimeout(() => {
+            window.open(targetUrl, '_blank');
+          }, 2000);
+
           setTimeout(() => setSendSuccess(false), 5000);
         } else {
           const errorMsg = result.error || `Fehler ${response.status}`;
