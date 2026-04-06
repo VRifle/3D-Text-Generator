@@ -4,7 +4,7 @@ import { OrbitControls, Text3D, Center, Grid, Environment, ContactShadows, Float
 import * as THREE from 'three';
 import { STLExporter, TTFLoader, FontLoader } from 'three-stdlib';
 import JSZip from 'jszip';
-import { Download, ChevronDown, Check, Maximize, AlertTriangle, X, Link as LinkIcon, Mail, Loader2, CheckCircle2, Smartphone } from 'lucide-react';
+import { Download, ChevronDown, Check, Maximize, AlertTriangle, X, Link as LinkIcon, Mail, Loader2, CheckCircle2, Smartphone, Type, Home, Tag } from 'lucide-react';
 import { suspend } from 'suspend-react';
 
 // Custom hook to correctly load and parse TTF fonts
@@ -172,50 +172,20 @@ const LayerControls = ({ title, layer, setLayer, isBaseLayer = false }: { title:
         </div>
         <div>
           <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Tiefe</label>
-          {isBaseLayer ? (
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-1 bg-white/40 p-1 rounded-xl border border-white/60">
-                {[
-                  { label: 'Stehend', value: 2.5, desc: 'Buchstaben stehend' },
-                  { label: 'Türschild', value: 1.3, desc: 'Türschild' },
-                  { label: 'Anhänger', value: 0.5, desc: 'Schlüsselanhänger' }
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => handleChange('depth', opt.value)}
-                    className={`flex-1 py-1.5 text-[9px] font-bold rounded-lg transition-all ${
-                      layer.depth === opt.value 
-                        ? 'bg-gray-800 text-white shadow-md' 
-                        : 'text-gray-500 hover:bg-white/60'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              <div className="text-[8px] text-gray-400 font-medium text-center italic">
-                {layer.depth === 2.5 ? 'Buchstaben stehend (2.5mm)' : 
-                 layer.depth === 1.3 ? 'Türschild (1.3mm)' : 
-                 layer.depth === 0.5 ? 'Schlüsselanhänger (0.5mm)' : 
-                 `${layer.depth.toFixed(1)} mm`}
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 bg-white/40 p-2 rounded-2xl border border-white/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
-              <input 
-                type="range" min="0.1" max="5" step="0.1" 
-                value={layer.depth} 
-                onChange={e => handleChange('depth', parseFloat(e.target.value))}
-                className="w-full accent-gray-800"
-              />
-              <input 
-                type="number" 
-                value={layer.depth}
-                onChange={e => handleChange('depth', parseFloat(e.target.value) || 0.1)}
-                className="w-12 text-xs px-1 py-1 border border-white/60 rounded-xl text-right font-mono bg-white/50 shadow-sm outline-none focus:ring-2 focus:ring-blue-400/40"
-              />
-            </div>
-          )}
+          <div className="flex items-center gap-2 bg-white/40 p-2 rounded-2xl border border-white/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+            <input 
+              type="range" min="0.1" max="5" step="0.1" 
+              value={layer.depth} 
+              onChange={e => handleChange('depth', parseFloat(e.target.value))}
+              className="w-full accent-gray-800"
+            />
+            <input 
+              type="number" 
+              value={layer.depth}
+              onChange={e => handleChange('depth', parseFloat(e.target.value) || 0.1)}
+              className="w-12 text-xs px-1 py-1 border border-white/60 rounded-xl text-right font-mono bg-white/50 shadow-sm outline-none focus:ring-2 focus:ring-blue-400/40"
+            />
+          </div>
         </div>
       </div>
 
@@ -453,6 +423,13 @@ export default function App() {
   const [sendSuccess, setSendSuccess] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
+  const getModelTypeName = () => {
+    if (Math.abs(layer1.depth - 2.5) < 0.1) return 'Schriftzug';
+    if (Math.abs(layer1.depth - 1.3) < 0.1) return 'Tuerschild';
+    if (Math.abs(layer1.depth - 0.5) < 0.1) return 'Anhaenger';
+    return 'Modell';
+  };
+
   const sendSTL = async () => {
     if (groupRef.current) {
       setIsSending(true);
@@ -461,12 +438,28 @@ export default function App() {
 
       try {
         const exporter = new STLExporter();
-        const stlString = exporter.parse(groupRef.current);
+        // Use binary export for significantly smaller file sizes
+        const stlData = exporter.parse(groupRef.current, { binary: true }) as any;
         
         // Create ZIP archive
         const zip = new JSZip();
-        const stlFilename = `3d-text-${layer1.text}-${layer2.text}.stl`;
-        zip.file(stlFilename, stlString);
+        const modelType = getModelTypeName();
+        
+        // Better filename cleaning
+        const cleanName = (text: string) => {
+          return text
+            .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue')
+            .replace(/ß/g, 'ss')
+            .replace(/[^a-z0-9]/gi, '_')
+            .substring(0, 20) || 'text';
+        };
+
+        const safeText1 = cleanName(layer1.text);
+        const safeText2 = cleanName(layer2.text);
+        
+        const stlFilename = `${modelType}-${safeText1}-${safeText2}.stl`;
+        // stlData is a DataView when binary is true
+        zip.file(stlFilename, stlData.buffer || stlData);
         
         // Compress with high level
         const zipBlob = await zip.generateAsync({
@@ -474,14 +467,17 @@ export default function App() {
           compression: 'DEFLATE',
           compressionOptions: { level: 9 }
         });
+
+        console.log(`ZIP Size: ${(zipBlob.size / 1024 / 1024).toFixed(2)} MB`);
         
         // Convert ZIP blob to base64
         const reader = new FileReader();
-        const base64Promise = new Promise<string>((resolve) => {
+        const base64Promise = new Promise<string>((resolve, reject) => {
           reader.onloadend = () => {
             const base64 = (reader.result as string).split(',')[1];
             resolve(base64);
           };
+          reader.onerror = reject;
         });
         
         reader.readAsDataURL(zipBlob);
@@ -493,30 +489,33 @@ export default function App() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            filename: `3d-text-${layer1.text}-${layer2.text}.zip`,
+            filename: `${modelType}-${safeText1}-${safeText2}.zip`,
             base64Data,
-            text1: layer1.text,
-            text2: layer2.text
+            text1: layer1.text || 'Basis',
+            text2: layer2.text || 'Top'
           }),
         });
 
-        if (response.status === 413) {
-          setSendError('Datei zu groß für den Versand (Limit 50MB)');
-          return;
+        let result;
+        try {
+          result = await response.json();
+        } catch (e) {
+          result = { error: response.status === 413 ? 'Datei zu groß (Limit 50MB)' : 'Serverfehler' };
         }
-
-        const result = await response.json();
 
         if (response.ok) {
           setSendSuccess(true);
           setTimeout(() => setSendSuccess(false), 5000);
         } else {
-          setSendError(result.error || 'Fehler beim Senden');
-          setTimeout(() => setSendError(null), 5000);
+          const errorMsg = result.error || `Fehler ${response.status}`;
+          setSendError(errorMsg);
+          console.error('Send Error:', errorMsg);
+          setTimeout(() => setSendError(null), 8000);
         }
       } catch (err: any) {
-        setSendError('Netzwerkfehler oder Server nicht erreichbar');
-        setTimeout(() => setSendError(null), 5000);
+        console.error('Catch Error:', err);
+        setSendError(`Fehler: ${err.message || 'Netzwerkfehler'}`);
+        setTimeout(() => setSendError(null), 8000);
       } finally {
         setIsSending(false);
       }
@@ -526,13 +525,27 @@ export default function App() {
   const exportSTL = () => {
     if (groupRef.current) {
       const exporter = new STLExporter();
-      const stlString = exporter.parse(groupRef.current);
-      const blob = new Blob([stlString], { type: 'text/plain' });
+      // Use binary for smaller files
+      const stlData = exporter.parse(groupRef.current, { binary: true }) as any;
+      const blob = new Blob([stlData.buffer || stlData], { type: 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.style.display = 'none';
       link.href = url;
-      link.download = '3d-text-model.stl';
+      
+      const modelType = getModelTypeName();
+      const cleanName = (text: string) => {
+        return text
+          .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue')
+          .replace(/ß/g, 'ss')
+          .replace(/[^a-z0-9]/gi, '_')
+          .substring(0, 20) || 'text';
+      };
+
+      const safeText1 = cleanName(layer1.text);
+      const safeText2 = cleanName(layer2.text);
+      
+      link.download = `${modelType}-${safeText1}-${safeText2}.stl`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -676,36 +689,58 @@ export default function App() {
         </div>
         
         <div className="p-4 md:p-6 space-y-6 md:space-y-8 flex flex-col">
-            {/* Keychain Controls */}
-            <div className="bg-white/50 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-4 space-y-4 relative overflow-hidden group">
+            {/* Modell-Typ Selector */}
+            <div className="bg-white/50 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-5 space-y-5 relative overflow-hidden group">
               <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-50/40 to-transparent pointer-events-none" />
               
-              <div className="flex items-center justify-between relative z-10">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-xl transition-colors ${isKeychainEnabled ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
-                    <LinkIcon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-800">Schlüsselanhänger</h4>
-                    <p className="text-[10px] text-gray-500 font-medium tracking-tight uppercase">Öse hinzufügen</p>
-                  </div>
+              <div className="relative z-10">
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Modell-Typ</label>
+                <div className="flex gap-2 p-1 bg-white/40 rounded-2xl border border-white/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+                  {[
+                    { label: 'Schriftzug', value: 2.5, icon: <Type className="w-4 h-4" /> },
+                    { label: 'Türschild', value: 1.3, icon: <Home className="w-4 h-4" /> },
+                    { label: 'Anhänger', value: 0.5, icon: <Tag className="w-4 h-4" /> }
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        setLayer1(prev => ({ ...prev, depth: opt.value }));
+                        if (opt.label === 'Anhänger') {
+                          setIsKeychainEnabled(true);
+                        } else {
+                          setIsKeychainEnabled(false);
+                        }
+                      }}
+                      className={`flex-1 py-3 px-2 rounded-xl flex flex-col items-center gap-1.5 transition-all ${
+                        layer1.depth === opt.value 
+                          ? 'bg-gray-800 text-white shadow-lg scale-[1.02]' 
+                          : 'text-gray-500 hover:bg-white/60'
+                      }`}
+                    >
+                      <div className={`${layer1.depth === opt.value ? 'text-blue-400' : 'text-gray-400'}`}>
+                        {opt.icon}
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-tight">{opt.label}</span>
+                    </button>
+                  ))}
                 </div>
-                <button 
-                  onClick={() => setIsKeychainEnabled(!isKeychainEnabled)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none z-10 ${isKeychainEnabled ? 'bg-blue-500' : 'bg-gray-200'}`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isKeychainEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
               </div>
 
               {isKeychainEnabled && (
-                <div className="space-y-4 pt-2 border-t border-white/40 relative z-10">
+                <div className="space-y-4 pt-4 border-t border-white/40 relative z-10 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Anhänger-Optionen</h4>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] font-bold text-blue-500 uppercase">Aktiv</span>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Positionierung</label>
+                      <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Positionierung</label>
                       <button 
                         onClick={() => setIsPlacingKeychain(!isPlacingKeychain)}
-                        className={`w-full py-2.5 px-4 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-2 ${
+                        className={`w-full py-2 rounded-xl text-[9px] font-bold transition-all flex items-center justify-center gap-2 ${
                           isPlacingKeychain 
                           ? 'bg-amber-500 text-white shadow-lg shadow-amber-200 animate-pulse' 
                           : 'bg-white/60 text-gray-700 border border-white/80 hover:bg-white/80'
@@ -716,7 +751,7 @@ export default function App() {
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Größe</label>
+                      <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Ösen-Größe</label>
                       <div className="flex items-center gap-2 bg-white/40 p-1.5 rounded-xl border border-white/60">
                         <input 
                           type="range" min="0.5" max="3" step="0.1" 
@@ -730,10 +765,10 @@ export default function App() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Manuelle Positionierung</label>
+                    <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider">Feinjustierung</label>
                     
                     <div className="flex items-center gap-3 bg-white/40 px-2 py-1.5 rounded-xl border border-white/60">
-                      <span className="text-[8px] font-bold text-red-400 w-16 uppercase">Links-Rechts</span>
+                      <span className="text-[8px] font-bold text-red-400 w-16 uppercase">L / R</span>
                       <input 
                         type="range" min="-20" max="20" step="0.01" 
                         value={keychainPos?.[0] || 0} 
@@ -744,7 +779,7 @@ export default function App() {
                     </div>
 
                     <div className="flex items-center gap-3 bg-white/40 px-2 py-1.5 rounded-xl border border-white/60">
-                      <span className="text-[8px] font-bold text-green-500 w-16 uppercase">Hoch-Runter</span>
+                      <span className="text-[8px] font-bold text-green-500 w-16 uppercase">O / U</span>
                       <input 
                         type="range" min="-20" max="20" step="0.01" 
                         value={keychainPos?.[1] || 0} 
@@ -755,7 +790,7 @@ export default function App() {
                     </div>
 
                     <div className="flex items-center gap-3 bg-white/40 px-2 py-1.5 rounded-xl border border-white/60">
-                      <span className="text-[8px] font-bold text-blue-500 w-16 uppercase">Vor-Zurück</span>
+                      <span className="text-[8px] font-bold text-blue-500 w-16 uppercase">V / Z</span>
                       <input 
                         type="range" min="-20" max="20" step="0.01" 
                         value={keychainPos?.[2] || 0} 
