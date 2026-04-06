@@ -51,7 +51,7 @@ type LayerConfig = {
 const defaultLayer1: LayerConfig = {
   text: 'BASE',
   fontUrl: FONTS[0].url,
-  size: 3,
+  size: 5.2,
   depth: 0.5,
   letterSpacing: -0.15,
   xOffset: 0,
@@ -119,7 +119,7 @@ const FontSelect = ({ value, onChange }: { value: string, onChange: (val: string
   );
 };
 
-const LayerControls = ({ title, layer, setLayer }: { title: string, layer: LayerConfig, setLayer: React.Dispatch<React.SetStateAction<LayerConfig>> }) => {
+const LayerControls = ({ title, layer, setLayer, isBaseLayer = false }: { title: string, layer: LayerConfig, setLayer: React.Dispatch<React.SetStateAction<LayerConfig>>, isBaseLayer?: boolean }) => {
   const handleChange = (field: keyof LayerConfig, value: string | number) => {
     setLayer(prev => ({ ...prev, [field]: value }));
   };
@@ -148,37 +148,73 @@ const LayerControls = ({ title, layer, setLayer }: { title: string, layer: Layer
       <div className="grid grid-cols-2 gap-4 relative z-10">
         <div>
           <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Größe</label>
-          <div className="flex items-center gap-2 bg-white/40 p-2 rounded-2xl border border-white/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
-            <input 
-              type="range" min="0.1" max="10" step="0.1" 
-              value={layer.size} 
-              onChange={e => handleChange('size', parseFloat(e.target.value))}
-              className="w-full accent-gray-800"
-            />
-            <input 
-              type="number" 
-              value={layer.size}
-              onChange={e => handleChange('size', parseFloat(e.target.value) || 0.1)}
-              className="w-12 text-xs px-1 py-1 border border-white/60 rounded-xl text-right font-mono bg-white/50 shadow-sm outline-none focus:ring-2 focus:ring-blue-400/40"
-            />
-          </div>
+          {isBaseLayer ? (
+            <div className="flex items-center justify-center h-[38px] bg-white/40 rounded-2xl border border-white/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+              <span className="text-sm font-mono font-bold text-gray-700">5.2 <span className="text-[10px] font-normal text-gray-400 ml-1">(Fixiert)</span></span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 bg-white/40 p-2 rounded-2xl border border-white/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+              <input 
+                type="range" min="0.1" max="10" step="0.1" 
+                value={layer.size} 
+                onChange={e => handleChange('size', parseFloat(e.target.value))}
+                className="w-full accent-gray-800"
+              />
+              <input 
+                type="number" 
+                value={layer.size}
+                onChange={e => handleChange('size', parseFloat(e.target.value) || 0.1)}
+                className="w-12 text-xs px-1 py-1 border border-white/60 rounded-xl text-right font-mono bg-white/50 shadow-sm outline-none focus:ring-2 focus:ring-blue-400/40"
+              />
+            </div>
+          )}
         </div>
         <div>
           <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Tiefe</label>
-          <div className="flex items-center gap-2 bg-white/40 p-2 rounded-2xl border border-white/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
-            <input 
-              type="range" min="0.1" max="5" step="0.1" 
-              value={layer.depth} 
-              onChange={e => handleChange('depth', parseFloat(e.target.value))}
-              className="w-full accent-gray-800"
-            />
-            <input 
-              type="number" 
-              value={layer.depth}
-              onChange={e => handleChange('depth', parseFloat(e.target.value) || 0.1)}
-              className="w-12 text-xs px-1 py-1 border border-white/60 rounded-xl text-right font-mono bg-white/50 shadow-sm outline-none focus:ring-2 focus:ring-blue-400/40"
-            />
-          </div>
+          {isBaseLayer ? (
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-1 bg-white/40 p-1 rounded-xl border border-white/60">
+                {[
+                  { label: 'Stehend', value: 2.5, desc: 'Buchstaben stehend' },
+                  { label: 'Türschild', value: 1.3, desc: 'Türschild' },
+                  { label: 'Anhänger', value: 0.5, desc: 'Schlüsselanhänger' }
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleChange('depth', opt.value)}
+                    className={`flex-1 py-1.5 text-[9px] font-bold rounded-lg transition-all ${
+                      layer.depth === opt.value 
+                        ? 'bg-gray-800 text-white shadow-md' 
+                        : 'text-gray-500 hover:bg-white/60'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <div className="text-[8px] text-gray-400 font-medium text-center italic">
+                {layer.depth === 2.5 ? 'Buchstaben stehend (2.5mm)' : 
+                 layer.depth === 1.3 ? 'Türschild (1.3mm)' : 
+                 layer.depth === 0.5 ? 'Schlüsselanhänger (0.5mm)' : 
+                 `${layer.depth.toFixed(1)} mm`}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 bg-white/40 p-2 rounded-2xl border border-white/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+              <input 
+                type="range" min="0.1" max="5" step="0.1" 
+                value={layer.depth} 
+                onChange={e => handleChange('depth', parseFloat(e.target.value))}
+                className="w-full accent-gray-800"
+              />
+              <input 
+                type="number" 
+                value={layer.depth}
+                onChange={e => handleChange('depth', parseFloat(e.target.value) || 0.1)}
+                className="w-12 text-xs px-1 py-1 border border-white/60 rounded-xl text-right font-mono bg-white/50 shadow-sm outline-none focus:ring-2 focus:ring-blue-400/40"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -544,7 +580,7 @@ export default function App() {
             </div>
 
            <div className="relative z-20">
-             <LayerControls title="Ebene 1 (Basis)" layer={layer1} setLayer={setLayer1} />
+             <LayerControls title="Ebene 1 (Basis)" layer={layer1} setLayer={setLayer1} isBaseLayer={true} />
            </div>
            <div className="relative z-10">
              {layer1.letterSpacing > -0.05 && (
