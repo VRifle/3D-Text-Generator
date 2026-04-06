@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Text3D, Center, Grid, Environment, ContactShadows, Float } from '@react-three/drei';
 import * as THREE from 'three';
 import { STLExporter, TTFLoader, FontLoader } from 'three-stdlib';
-import { Download, ChevronDown, Check, Maximize, AlertTriangle, X, Link as LinkIcon } from 'lucide-react';
+import { Download, ChevronDown, Check, Maximize, AlertTriangle, X, Link as LinkIcon, Mail, Loader2, CheckCircle2 } from 'lucide-react';
 import { suspend } from 'suspend-react';
 
 // Custom hook to correctly load and parse TTF fonts
@@ -415,6 +415,70 @@ export default function App() {
     setShowMobilePrompt(false);
   };
 
+  const [isSending, setIsSending] = useState(false);
+  const [sendSuccess, setSendSuccess] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  const sendSTL = async () => {
+    if (groupRef.current) {
+      setIsSending(true);
+      setSendError(null);
+      setSendSuccess(false);
+
+      try {
+        const exporter = new STLExporter();
+        const stlString = exporter.parse(groupRef.current);
+        
+        // Convert string to base64
+        const blob = new Blob([stlString], { type: 'text/plain' });
+        const reader = new FileReader();
+        
+        const base64Promise = new Promise<string>((resolve) => {
+          reader.onloadend = () => {
+            const base64 = (reader.result as string).split(',')[1];
+            resolve(base64);
+          };
+        });
+        
+        reader.readAsDataURL(blob);
+        const base64Data = await base64Promise;
+
+        const response = await fetch('/api/send-stl', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            filename: `3d-text-${layer1.text}-${layer2.text}.stl`,
+            base64Data,
+            text1: layer1.text,
+            text2: layer2.text
+          }),
+        });
+
+        if (response.status === 413) {
+          setSendError('Datei zu groß für den Versand (Limit 50MB)');
+          return;
+        }
+
+        const result = await response.json();
+
+        if (response.ok) {
+          setSendSuccess(true);
+          setTimeout(() => setSendSuccess(false), 5000);
+        } else {
+          setSendError(result.error || 'Fehler beim Senden');
+          setTimeout(() => setSendError(null), 5000);
+        }
+      } catch (err: any) {
+        setSendError('Netzwerkfehler oder Server nicht erreichbar');
+        setTimeout(() => setSendError(null), 5000);
+      } finally {
+        setIsSending(false);
+      }
+    }
+  };
+
   const exportSTL = () => {
     if (groupRef.current) {
       const exporter = new STLExporter();
@@ -476,13 +540,33 @@ export default function App() {
               <span className="text-gray-500 font-bold text-[9px] md:text-[11px] tracking-[0.2em] uppercase">3D Text Generator</span>
             </div>
           </div>
-          <button 
-            onClick={exportSTL}
-            className="bg-gray-900 hover:bg-black text-white px-5 py-2.5 rounded-full flex items-center gap-2 text-sm font-medium transition-all shadow-md hover:shadow-lg active:scale-95"
-          >
-            <Download className="w-4 h-4" />
-            STL Export
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button 
+              onClick={sendSTL}
+              disabled={isSending}
+              className={`${
+                sendSuccess 
+                  ? 'bg-green-500 hover:bg-green-600' 
+                  : sendError 
+                    ? 'bg-red-500 hover:bg-red-600' 
+                    : 'bg-gray-900 hover:bg-black'
+              } text-white px-5 py-2.5 rounded-full flex items-center gap-2 text-sm font-medium transition-all shadow-md hover:shadow-lg active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed`}
+            >
+              {isSending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : sendSuccess ? (
+                <CheckCircle2 className="w-4 h-4" />
+              ) : (
+                <Mail className="w-4 h-4" />
+              )}
+              {isSending ? 'Sende...' : sendSuccess ? 'Gesendet!' : 'STL Senden'}
+            </button>
+            {sendError && (
+              <span className="text-[10px] text-red-500 font-bold animate-pulse mr-2">
+                {sendError}
+              </span>
+            )}
+          </div>
         </div>
         
         <div className="p-4 md:p-6 space-y-6 md:space-y-8 flex flex-col">
