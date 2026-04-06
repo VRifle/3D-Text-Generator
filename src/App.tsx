@@ -570,7 +570,7 @@ export default function App() {
               ) : (
                 <Mail className="w-4 h-4" />
               )}
-              {isSending ? 'Sende...' : sendSuccess ? 'Gesendet!' : 'STL Senden'}
+              {isSending ? 'Sende...' : sendSuccess ? 'Gesendet!' : 'Datei senden'}
             </button>
             {sendError && (
               <span className="text-[10px] text-red-500 font-bold animate-pulse mr-2">
