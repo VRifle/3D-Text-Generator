@@ -40,17 +40,17 @@ async function startServer() {
       const { data, error } = await resend.emails.send({
         from: 'STL Export <onboarding@resend.dev>', // Resend default for testing
         to: [RECIPIENT_EMAIL],
-        subject: `Neuer STL Export: ${text1} / ${text2}`,
+        subject: `Neuer STL Export (ZIP): ${text1} / ${text2}`,
         html: `
           <div style="font-family: sans-serif; padding: 20px; color: #333;">
-            <h2 style="color: #4f46e5;">Neuer 3D-Druck Auftrag</h2>
+            <h2 style="color: #4f46e5;">Neuer 3D-Druck Auftrag (Komprimiert)</h2>
             <p>Ein neues Modell wurde generiert:</p>
             <ul style="list-style: none; padding: 0;">
               <li><strong>Ebene 1:</strong> ${text1}</li>
               <li><strong>Ebene 2:</strong> ${text2}</li>
               <li><strong>Dateiname:</strong> ${filename}</li>
             </ul>
-            <p style="margin-top: 20px; font-size: 12px; color: #666;">Die STL-Datei befindet sich im Anhang.</p>
+            <p style="margin-top: 20px; font-size: 12px; color: #666;">Die STL-Datei befindet sich im angehängten ZIP-Archiv.</p>
           </div>
         `,
         attachments: [

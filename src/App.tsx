@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Text3D, Center, Grid, Environment, ContactShadows, Float } from '@react-three/drei';
 import * as THREE from 'three';
 import { STLExporter, TTFLoader, FontLoader } from 'three-stdlib';
+import JSZip from 'jszip';
 import { Download, ChevronDown, Check, Maximize, AlertTriangle, X, Link as LinkIcon, Mail, Loader2, CheckCircle2 } from 'lucide-react';
 import { suspend } from 'suspend-react';
 
@@ -429,10 +430,20 @@ export default function App() {
         const exporter = new STLExporter();
         const stlString = exporter.parse(groupRef.current);
         
-        // Convert string to base64
-        const blob = new Blob([stlString], { type: 'text/plain' });
-        const reader = new FileReader();
+        // Create ZIP archive
+        const zip = new JSZip();
+        const stlFilename = `3d-text-${layer1.text}-${layer2.text}.stl`;
+        zip.file(stlFilename, stlString);
         
+        // Compress with high level
+        const zipBlob = await zip.generateAsync({
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 9 }
+        });
+        
+        // Convert ZIP blob to base64
+        const reader = new FileReader();
         const base64Promise = new Promise<string>((resolve) => {
           reader.onloadend = () => {
             const base64 = (reader.result as string).split(',')[1];
@@ -440,7 +451,7 @@ export default function App() {
           };
         });
         
-        reader.readAsDataURL(blob);
+        reader.readAsDataURL(zipBlob);
         const base64Data = await base64Promise;
 
         const response = await fetch('/api/send-stl', {
@@ -449,7 +460,7 @@ export default function App() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            filename: `3d-text-${layer1.text}-${layer2.text}.stl`,
+            filename: `3d-text-${layer1.text}-${layer2.text}.zip`,
             base64Data,
             text1: layer1.text,
             text2: layer2.text
